@@ -240,9 +240,26 @@ async def check_bot():
     await feed(message(16, OWNER, text="помнишь?"))
     assert "Обеды записывать как Meals" in claude.requests[-1]["system"]
 
+    # 8а. Ссылка на таблицу закрепляется командой /table, по /start и по просьбе в чате.
+    def pins():
+        return [p for n, p in telegram.calls if n == "pinChatMessage"]
+
+    assert not pins()
+    await feed(command(30, OWNER, "/table"))
+    assert "spreadsheets/d/test-id" in telegram.texts()[-1] and len(pins()) == 1
+    await feed(command(31, OWNER, "/start"))
+    assert len(pins()) == 2
+    await feed(command(32, STRANGER, "/table"))
+    await feed(command(33, STRANGER, "/start"))
+    assert len(pins()) == 2, "чужому человеку ссылку не показываем"
+    claude.tool("pin_table_link")
+    claude.say("Готово")
+    await feed(message(34, OWNER, text="закрепи ссылку на таблицу в чате"))
+    assert len(pins()) == 3 and telegram.texts()[-2] == "Готово" and "spreadsheets/d/test-id" in telegram.texts()[-1]
+
     # 9. /cost считает расход, /new очищает память разговора.
     await feed(command(17, OWNER, "/cost"))
-    assert "сообщений 7" in telegram.texts()[-1], telegram.texts()[-1]
+    assert "сообщений 8" in telegram.texts()[-1], telegram.texts()[-1]
     await feed(command(18, OWNER, "/new"))
     claude.say("Готово")
     await feed(message(19, OWNER, text="привет"))

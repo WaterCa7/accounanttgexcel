@@ -15,7 +15,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
-from telegram import Update
+from telegram import LinkPreviewOptions, Update
 from telegram.constants import ChatAction
 from telegram.ext import Application, ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
 
@@ -29,6 +29,7 @@ HERE = Path(__file__).parent
 HELP = (
     "Пришлите скриншот из банка, фото чека или PDF и напишите, что сделать. Можно и просто текстом: "
     "«добавь такси 850 вчера», «исправь сумму в последней записи на 368», «сколько сейчас итого?».\n\n"
+    "/table присылает ссылку на таблицу и закрепляет её вверху чата\n"
     "/undo отменяет изменения последнего сообщения\n"
     "/new начинает разговор заново\n"
     "/cost показывает расход на Claude API за месяц"
@@ -152,6 +153,22 @@ async def handle(context: ContextTypes.DEFAULT_TYPE, chat_id: int, text: str, fi
             result.usage.cache_write, result.usage.cache_read, result.usage.dollars,
         )
         await context.bot.send_message(chat_id, result.reply[:4000])
+        if result.pin_link:
+            await pin_table_link(context, chat_id)
+
+
+async def pin_table_link(context: ContextTypes.DEFAULT_TYPE, chat_id: int) -> None:
+    """Отправить сообщение со ссылкой на таблицу и закрепить его вверху чата."""
+    url = state_of(context).agent.table.url
+    if not url:
+        await context.bot.send_message(chat_id, "Не знаю ссылку на таблицу.")
+        return
+    sent = await context.bot.send_message(chat_id, f"📌 Таблица: {url}", link_preview_options=LinkPreviewOptions(is_disabled=True))
+    try:
+        await context.bot.pin_chat_message(chat_id, sent.message_id, disable_notification=True)
+    except Exception:
+        log.exception("Не удалось закрепить сообщение")
+        await context.bot.send_message(chat_id, "Ссылку отправил, но закрепить не получилось. Закрепите сообщение вручную.")
 
 
 async def flush_album(context: ContextTypes.DEFAULT_TYPE, group_id: str) -> None:
@@ -212,11 +229,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     if state_of(context).access.allows(user):
         await update.message.reply_text(HELP)
+        if update.message.text.startswith("/start"):
+            await pin_table_link(context, update.message.chat_id)
     else:
         await update.message.reply_text(
             f"Это личный бот, доступ закрыт.\nВаш Telegram ID: {user.id}\n"
             "Если бот ваш, впишите этот ID в ALLOWED_USERS в файле .env и перезапустите бота."
         )
+
+
+async def table_link(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await pin_table_link(context, update.message.chat_id)
 
 
 async def undo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -260,6 +283,7 @@ def build_application(token: str, state: State, builder=None) -> Application:
     app.bot_data["state"] = state
     allowed = AllowedFilter(state.access)
     app.add_handler(CommandHandler(["start", "help"], start))
+    app.add_handler(CommandHandler("table", table_link, filters=allowed))
     app.add_handler(CommandHandler("undo", undo, filters=allowed))
     app.add_handler(CommandHandler("new", new, filters=allowed))
     app.add_handler(CommandHandler("cost", cost, filters=allowed))
