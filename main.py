@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import logging
 import os
@@ -275,14 +276,20 @@ def require(name: str) -> str:
 
 
 def google_credentials():
-    """Ключ Google: текст JSON из переменной окружения или файл рядом с main.py."""
-    raw = os.environ.get("GOOGLE_CREDENTIALS_JSON", "").strip()
+    """Ключ Google: текст JSON из переменной окружения или файл рядом с main.py.
+
+    В переменной ключ может лежать как есть или в base64: так он проходит через любые
+    поля ввода и загрузчики .env без искажений.
+    """
+    raw = os.environ.get("GOOGLE_CREDENTIALS_JSON", "").strip().strip("'").strip()
     if not raw:
         return os.environ.get("GOOGLE_CREDENTIALS_FILE", "google-credentials.json")
     try:
-        return json.loads(raw)
-    except ValueError:
-        sys.exit("В GOOGLE_CREDENTIALS_JSON должен быть целиком текст файла ключа Google.")
+        if not raw.startswith("{"):
+            raw = base64.urlsafe_b64decode(raw + "=" * (-len(raw) % 4)).decode("utf-8")
+        return json.loads(raw, strict=False)  # strict=False: переносы строк внутри ключа допустимы
+    except (ValueError, UnicodeDecodeError):
+        sys.exit("В GOOGLE_CREDENTIALS_JSON должен быть целиком текст файла ключа Google (или он же в base64).")
 
 
 def main() -> None:

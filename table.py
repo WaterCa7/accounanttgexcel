@@ -6,6 +6,8 @@ import re
 from datetime import datetime
 
 import gspread
+import requests
+from google.auth.exceptions import GoogleAuthError, RefreshError
 
 import settings
 
@@ -107,6 +109,10 @@ class Table:
             raise TableError("Ключ Google повреждён или неполон. Скачайте файл ключа заново.") from exc
         except gspread.exceptions.NoValidUrlKeyFound as exc:
             raise TableError("В GOOGLE_SHEET_URL должна быть ссылка на Google Таблицу или её ID.") from exc
+        except (GoogleAuthError, requests.exceptions.RequestException) as exc:
+            if isinstance(exc, RefreshError):
+                raise TableError("Google не принял ключ служебного аккаунта. Создайте новый ключ и замените его.") from exc
+            raise TableError("Не получилось связаться с Google. Проверьте, что с хостинга доступны адреса googleapis.com.") from exc
         except (gspread.exceptions.APIError, gspread.exceptions.SpreadsheetNotFound, PermissionError) as exc:
             raise TableError(
                 "Нет доступа к таблице. Откройте её в браузере, нажмите «Настройки доступа» и дайте права "
