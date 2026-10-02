@@ -1,0 +1,12 @@
+# секреты и ключи никогда не попадают в репозиторий
+.env
+google-credentials.json
+*.json.key
+
+# данные бота: правила и счётчик расхода
+data/
+
+__pycache__/
+*.pyc
+venv/
+.venv/

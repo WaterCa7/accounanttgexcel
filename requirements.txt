@@ -1,0 +1,5 @@
+python-telegram-bot==22.8
+anthropic==1.11.0
+gspread==6.2.1
+python-dotenv==1.2.3
+tzdata
