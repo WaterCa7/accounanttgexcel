@@ -20,6 +20,7 @@ ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 class FakeBook:
     def __init__(self, title="Тестовая таблица"):
         self.title = title
+        self.url = "https://docs.google.com/spreadsheets/d/test-id"
         self.sheets: list[dict] = []
         self.requests: list[tuple[str, object]] = []  # что бот отправлял на запись
 

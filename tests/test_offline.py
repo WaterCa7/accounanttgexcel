@@ -185,6 +185,7 @@ async def check_bot():
     content = first["messages"][-1]["content"]
     assert [b["type"] for b in content] == ["text", "image", "text"]
     assert "{=SUM(G2:G4)}" in content[0]["text"] and "ужин с делегацией" in content[2]["text"]
+    assert "Ссылка на таблицу: https://docs.google.com/spreadsheets/d/test-id" in content[0]["text"]
     assert second["messages"][-1]["content"][0]["type"] == "tool_result"
     assert second["messages"][-1]["content"][0]["is_error"] is False
 

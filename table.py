@@ -149,6 +149,9 @@ class Table:
         shown = self._get(ranges, "FORMATTED_VALUE")
         formulas = self._get(ranges, "FORMULA")
         parts = [f"Таблица «{self._title}», региональные настройки: {self._locale or 'не указаны'}."]
+        url = getattr(self.book, "url", "")
+        if url:
+            parts.append(f"Ссылка на таблицу: {url}")
         for props, shown_grid, formula_grid in zip(sheets, shown, formulas):
             lines = render_grid(shown_grid, formula_grid)
             grid = props.get("gridProperties", {})
